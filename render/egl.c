@@ -992,6 +992,10 @@ static char *get_render_name(const char *name) {
 static int dup_egl_device_drm_fd(struct wlr_egl *egl) {
 	if (egl->device == EGL_NO_DEVICE_EXT || (!egl->exts.EXT_device_drm &&
 			!egl->exts.EXT_device_drm_render_node)) {
+		/* fallback to gbm device fd */
+		if (egl->gbm_device)
+			return dup(gbm_device_get_fd(egl->gbm_device));
+
 		return -1;
 	}
 
