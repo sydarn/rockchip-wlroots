@@ -8,6 +8,7 @@
 #include <wlr/render/egl.h>
 #include <wlr/util/log.h>
 #include <wlr/util/region.h>
+#include <wlr/types/wlr_egl_buffer.h>
 #include <xf86drm.h>
 #include "render/egl.h"
 #include "util/env.h"
@@ -296,6 +297,16 @@ static bool egl_init_display(struct wlr_egl *egl, EGLDisplay display,
 	egl->exts.EXT_create_context_robustness =
 		check_egl_ext(display_exts_str, "EGL_EXT_create_context_robustness");
 
+	if (check_egl_ext(display_exts_str, "EGL_WL_bind_wayland_display")) {
+		egl->exts.WL_bind_wayland_display = true;
+		load_egl_proc(&egl->procs.eglBindWaylandDisplayWL,
+			"eglBindWaylandDisplayWL");
+		load_egl_proc(&egl->procs.eglUnbindWaylandDisplayWL,
+			"eglUnbindWaylandDisplayWL");
+		load_egl_proc(&egl->procs.eglQueryWaylandBufferWL,
+			"eglQueryWaylandBufferWL");
+	}
+
 	const char *device_exts_str = NULL, *driver_name = NULL;
 	if (egl->exts.EXT_device_query) {
 		EGLAttrib device_attrib;
@@ -449,6 +460,8 @@ static bool egl_init(struct wlr_egl *egl, EGLenum platform,
 			wlr_log(WLR_DEBUG, "Obtained high priority context");
 		}
 	}
+
+	egl_buffer_register(egl);
 
 	return true;
 }
@@ -653,6 +666,9 @@ void wlr_egl_destroy(struct wlr_egl *egl) {
 	wlr_drm_format_set_finish(&egl->dmabuf_render_formats);
 	wlr_drm_format_set_finish(&egl->dmabuf_texture_formats);
 
+	if (egl->exts.WL_bind_wayland_display && egl->wl_display)
+		egl->procs.eglUnbindWaylandDisplayWL(egl->display, egl->wl_display);
+
 	eglMakeCurrent(egl->display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
 	eglDestroyContext(egl->display, egl->context);
 
@@ -730,6 +746,22 @@ bool wlr_egl_restore_context(struct wlr_egl_context *context) {
 
 	return eglMakeCurrent(display, context->draw_surface,
 			context->read_surface, context->context);
+}
+
+EGLImageKHR wlr_egl_create_image_from_eglbuf(struct wlr_egl *egl,
+		struct wlr_egl_buffer *buffer) {
+	const EGLint attribs[] = {
+		EGL_WAYLAND_PLANE_WL, 0,
+		EGL_IMAGE_PRESERVED_KHR, EGL_TRUE,
+		EGL_NONE
+	};
+
+	EGLImageKHR image = egl->procs.eglCreateImageKHR(egl->display, EGL_NO_CONTEXT,
+		EGL_WAYLAND_BUFFER_WL, buffer->resource, attribs);
+	if (image == EGL_NO_IMAGE_KHR) {
+		wlr_log(WLR_ERROR, "eglCreateImageKHR failed");
+	}
+	return image;
 }
 
 EGLImageKHR wlr_egl_create_image_from_dmabuf(struct wlr_egl *egl,

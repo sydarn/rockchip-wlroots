@@ -75,6 +75,12 @@ const struct wlr_drm_format_set *wlr_renderer_get_render_formats(
 
 bool wlr_renderer_init_wl_shm(struct wlr_renderer *r,
 		struct wl_display *wl_display) {
+	// The sway would call us directly instead of wlr_renderer_init_wl_display
+	if (r->impl->bind_wl_display &&
+	    !r->impl->bind_wl_display(r, wl_display)) {
+		return false;
+	}
+
 	return wlr_shm_create_with_renderer(wl_display, 2, r) != NULL;
 }
 

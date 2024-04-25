@@ -8,6 +8,7 @@ struct wlr_egl {
 	EGLContext context;
 	EGLDeviceEXT device; // may be EGL_NO_DEVICE_EXT
 	struct gbm_device *gbm_device;
+	struct wl_display *wl_display;
 
 	struct {
 		// Display extensions
@@ -16,6 +17,7 @@ struct wlr_egl {
 		bool EXT_image_dma_buf_import_modifiers;
 		bool IMG_context_priority;
 		bool EXT_create_context_robustness;
+		bool WL_bind_wayland_display;
 
 		// Device extensions
 		bool EXT_device_drm;
@@ -32,6 +34,9 @@ struct wlr_egl {
 		PFNEGLGETPLATFORMDISPLAYEXTPROC eglGetPlatformDisplayEXT;
 		PFNEGLCREATEIMAGEKHRPROC eglCreateImageKHR;
 		PFNEGLDESTROYIMAGEKHRPROC eglDestroyImageKHR;
+		PFNEGLBINDWAYLANDDISPLAYWL eglBindWaylandDisplayWL;
+		PFNEGLUNBINDWAYLANDDISPLAYWL eglUnbindWaylandDisplayWL;
+		PFNEGLQUERYWAYLANDBUFFERWL eglQueryWaylandBufferWL;
 		PFNEGLQUERYDMABUFFORMATSEXTPROC eglQueryDmaBufFormatsEXT;
 		PFNEGLQUERYDMABUFMODIFIERSEXTPROC eglQueryDmaBufModifiersEXT;
 		PFNEGLDEBUGMESSAGECONTROLKHRPROC eglDebugMessageControlKHR;

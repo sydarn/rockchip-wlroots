@@ -9,6 +9,7 @@
 #include <wlr/render/egl.h>
 #include <wlr/render/interface.h>
 #include <wlr/render/wlr_texture.h>
+#include <wlr/types/wlr_egl_buffer.h>
 #include <wlr/util/log.h>
 #include "render/egl.h"
 #include "render/gles2.h"
