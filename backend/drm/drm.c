@@ -1,3 +1,4 @@
+#define _XOPEN_SOURCE 700
 #include <assert.h>
 #include <drm_fourcc.h>
 #include <drm_mode.h>
@@ -1474,7 +1475,7 @@ static void realloc_crtcs(struct wlr_drm_backend *drm,
 	}
 }
 
-static struct wlr_drm_crtc *connector_get_current_crtc(
+static struct wlr_drm_crtc *connector_get_crtc(
 		struct wlr_drm_connector *wlr_conn, const drmModeConnector *drm_conn) {
 	struct wlr_drm_backend *drm = wlr_conn->backend;
 
@@ -1498,6 +1499,20 @@ static struct wlr_drm_crtc *connector_get_current_crtc(
 		}
 		crtc_id = enc->crtc_id;
 		drmModeFreeEncoder(enc);
+	} else {
+		/* If no active crtc was found, pick the first possible crtc */
+		uint32_t crtcs_for_connector = 0;
+		int i;
+
+		for (i = 0; i < drm_conn->count_encoders; i++) {
+			drmModeEncoder *enc =
+				drmModeGetEncoder(drm->fd, drm_conn->encoders[i]);
+			crtcs_for_connector |= enc->possible_crtcs;
+			drmModeFreeEncoder(enc);
+		}
+
+		if (crtcs_for_connector != 0)
+			return &drm->crtcs[ffs(crtcs_for_connector) - 1];
 	}
 	if (crtc_id == 0) {
 		return NULL;
@@ -1546,7 +1561,7 @@ static struct wlr_drm_connector *create_drm_connector(struct wlr_drm_backend *dr
 		wlr_drm_conn_log(wlr_conn, WLR_ERROR, "No CRTC possible");
 	}
 
-	wlr_conn->crtc = connector_get_current_crtc(wlr_conn, drm_conn);
+	wlr_conn->crtc = connector_get_crtc(wlr_conn, drm_conn);
 
 	wl_list_insert(drm->connectors.prev, &wlr_conn->link);
 	return wlr_conn;
